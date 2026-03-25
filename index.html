@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>College Event Management System</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Inter:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=2" />
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+  <script src="firebase-config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <script type="text/javascript">
+    (function () {
+      // Initialize EmailJS with your Public Key
+      // TODO: Replace "YOUR_PUBLIC_KEY" with your actual EmailJS Public Key
+      emailjs.init("pEhnRYhELPAOCv8PP");
+    })();
+  </script>
+</head>
+
+<body>
+  <header>
+    <h1>College Event Management System</h1>
+  </header>
+
+  <nav>
+    <button onclick="showView('home')">Home</button>
+    <button onclick="showView('events')">Events</button>
+    <button onclick="showView('gallery')">Gallery</button>
+    <button onclick="showView('dashboard')" id="navDashboardBtn" style="display:none">Dashboard</button>
+    <button onclick="showView('contact')">Feedback</button>
+
+    <div style="margin-left:auto; display:flex; align-items:center; gap: 10px;">
+      <button onclick="toggleTheme()" id="themeToggleBtn"
+        style="border-radius:50%; padding:8px; font-size:18px;">🌙</button>
+      <div class="dropdown" style="margin-left: 0;">
+        <button class="dropbtn">Login ▾</button>
+        <div class="dropdown-content">
+          <a href="#" onclick="showView('student'); return false;">Student Login</a>
+          <a href="#" onclick="showView('admin'); return false;">Admin Login</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div id="debugBanner"></div>
+
+    <section id="home" class="view">
+      <div class="card">
+        <h2 style="text-align: center;">Upcoming Events</h2>
+
+        <div class="search-filter-container" style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
+          <input type="text" id="search-events-home" placeholder="Search event name..." style="flex: 1;"
+            oninput="applyFilters('eventsList')" />
+          <select id="filter-category-home" style="width: auto;" onchange="applyFilters('eventsList')">
+            <option value="">All Categories</option>
+            <option value="Technical">Technical</option>
+            <option value="Cultural">Cultural</option>
+            <option value="Sports">Sports</option>
+            <option value="Workshop">Workshop</option>
+          </select>
+          <input type="date" id="filter-date-home" style="width: auto;" onchange="applyFilters('eventsList')" />
+        </div>
+      </div>
+      <div id="eventsList" class="events"></div>
+    </section>
+
+    <section id="events" class="view" style="display:none">
+      <div class="card">
+        <h2 style="text-align: center;">All Events</h2>
+        <div class="search-filter-container" style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
+          <input type="text" id="search-events-all" placeholder="Search by name..." style="flex: 1;"
+            oninput="applyFilters('eventsClone')" />
+          <select id="filter-category-all" style="width: auto;" onchange="applyFilters('eventsClone')">
+            <option value="">All Categories</option>
+            <option value="Technical">Technical</option>
+            <option value="Cultural">Cultural</option>
+            <option value="Sports">Sports</option>
+            <option value="Workshop">Workshop</option>
+          </select>
+          <input type="date" id="filter-date-all" style="width: auto;" onchange="applyFilters('eventsClone')" />
+        </div>
+      </div>
+      <div id="eventsClone" class="events"></div>
+    </section>
+
+    <!-- Event Gallery Section -->
+    <section id="gallery" class="view" style="display:none">
+      <div class="card">
+        <h2 style="text-align: center;">Event Postings & Gallery</h2>
+        <p class="muted" style="text-align: center;">Explore past and upcoming event posters and memories.</p>
+        <div id="galleryGrid"
+          style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 20px;">
+        </div>
+      </div>
+    </section>
+
+    <!-- Student Dashboard Section -->
+    <section id="dashboard" class="view" style="display:none">
+      <div class="card">
+        <h2>Student Dashboard</h2>
+        <div id="studentProfileInfo"
+          style="margin-bottom: 20px; font-weight: bold; font-size: 1.1em; color: var(--text-main);"></div>
+        <h3>My Registered Events</h3>
+        <div id="myRegistrationsList" class="events" style="margin-top: 15px;"></div>
+      </div>
+    </section>
+
+    <!-- Feedback / Contact Section -->
+    <section id="contact" class="view" style="display:none">
+      <div class="card login-container">
+        <h2>Contact & Feedback</h2>
+        <p class="muted">Have questions or suggestions? We'd love to hear from you.</p>
+        <input id="f-name" placeholder="Your Name" />
+        <input id="f-email" type="email" placeholder="Your Email" />
+        <textarea id="f-message" placeholder="Your feedback or query..."
+          style="min-height: 120px; resize: vertical;"></textarea>
+        <div style="margin-top:10px;"><button class="btn primary" id="submitFeedbackBtn">Submit Feedback</button></div>
+      </div>
+    </section>
+
+    <section id="student" class="view" style="display:none">
+
+      <!-- Sliding Auth Container -->
+      <div class="auth-container" id="authContainer">
+
+        <!-- Sign Up Form -->
+        <div class="form-container sign-up-container">
+          <div class="auth-form">
+            <div class="auth-mascot" id="mascot-signup">🐵</div>
+            <h1>Create Account</h1>
+            <p class="muted">Verify with your Gmail address</p>
+
+            <!-- Step 1: Verification Method -->
+            <div id="googleVerifyStep" style="width:100%;">
+
+              <!-- Gmail Section -->
+              <div id="gmailSection" style="width:100%;">
+                <div class="gmail-input-wrapper">
+                  <span class="gmail-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="width:18px;height:18px;">
+                      <path fill="#FFC107"
+                        d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 2.9l5.7-5.7C34.5 6.5 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.9z" />
+                      <path fill="#FF3D00"
+                        d="m6.3 14.7 6.6 4.8C14.7 16.1 19 13 24 13c3.1 0 5.8 1.1 8 2.9l5.7-5.7C34.5 6.5 29.6 4 24 4 16.3 4 9.7 8.4 6.3 14.7z" />
+                      <path fill="#4CAF50"
+                        d="M24 44c5.5 0 10.5-2.1 14.3-5.5l-6.6-5.6C29.7 34.9 27 36 24 36c-5.2 0-9.6-3.3-11.3-8H6.1l-6.8 5.1C2.8 40.2 12.8 44 24 44z" />
+                      <path fill="#1976D2"
+                        d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.3 5.6l6.6 5.6c-.5.4 7.4-5.4 7.4-15.2 0-1.3-.1-2.7-.4-3.9z" />
+                    </svg>
+                  </span>
+                  <input id="su-gmail" type="email" placeholder="yourname@gmail.com" autocomplete="email"
+                    style="padding-left:44px;" />
+                </div>
+                <p class="muted" style="font-size:11px; margin-top:6px; text-align:left;">⚠️ Only Gmail addresses
+                  accepted</p>
+                <button id="googleSignInBtn" class="btn google-btn" type="button">Verify Gmail &amp; Get OTP</button>
+                <p id="googleVerifyMsg" class="muted" style="margin-top:8px; font-size:12px;"></p>
+              </div>
+
+            </div><!-- end googleVerifyStep -->
+
+            <!-- Step 2: Password Setup (shown after Gmail verification) -->
+            <div id="passwordSetupStep" style="display:none; width:100%;">
+
+              <!-- Back button -->
+              <button id="backToVerifyBtn" class="back-btn" type="button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                Back
+              </button>
+
+              <div id="verifiedBadge"
+                style="display:flex; align-items:center; gap:8px; margin-bottom:12px; padding:8px 12px; background:rgba(66,133,244,0.1); border-radius:8px; border:1px solid rgba(66,133,244,0.3);">
+                <span style="font-size:18px;">✅</span>
+                <div>
+                  <p id="verifiedBadgeLabel" style="margin:0; font-size:12px; font-weight:600; color:#4285f4;">Verified
+                  </p>
+                  <p id="verifiedEmailDisplay" style="margin:0; font-size:12px; color:var(--text-muted);"></p>
+                </div>
+              </div>
+              <input id="su-email" type="email" placeholder="Email" style="display:none;" />
+              <div style="display:flex; gap:5px; width:100%;">
+                <input id="su-otp" type="text" placeholder="Enter OTP sent to your Gmail"
+                  style="display:none; flex:1;" />
+                <button id="getOtpBtn" class="btn outline" style="margin-top:8px; width:100%;">Send OTP to
+                  Gmail</button>
+              </div>
+              <div class="password-wrapper" style="margin-top:8px;">
+                <input id="su-pass" type="password" placeholder="Create Password" />
+                <span class="password-toggle" onclick="togglePassword('su-pass', 'mascot-signup')">👁️</span>
+              </div>
+              <p class="muted" style="font-size:11px; margin-top:5px; text-align:left;">Requires 8+ chars, 1 uppercase,
+                1 number, &amp; 1 special char.</p>
+              <button class="btn primary" id="signupBtn" disabled>Sign Up</button>
+            </div>
+
+            <p id="signupMsg" class="muted" style="margin-top:10px; font-size:12px;"></p>
+            <p class="mobile-toggle">Already have an account? <a href="#" id="mobileSignInLink">Sign In</a></p>
+          </div>
+        </div>
+
+        <!-- Sign In Form -->
+        <div class="form-container sign-in-container">
+          <div class="auth-form">
+            <div class="auth-mascot" id="mascot-signin">🐵</div>
+            <h1>Sign in</h1>
+            <p class="muted">Welcome back!</p>
+            <div class="field-group" id="emailFieldGroup">
+              <input id="s-email" type="email" placeholder="Email" />
+              <p id="emailFieldError" class="field-error" style="display:none;"></p>
+            </div>
+            <div class="field-group" id="passFieldGroup">
+              <div class="password-wrapper">
+                <input id="s-pass" type="password" placeholder="Password" />
+                <span class="password-toggle" onclick="togglePassword('s-pass', 'mascot-signin')">👁️</span>
+              </div>
+              <p id="passFieldError" class="field-error" style="display:none;"></p>
+            </div>
+            <a href="#" onclick="showView('forgotPassword'); return false;" class="fp-link">Forgot your password?</a>
+            <button class="btn primary" id="loginBtn">Sign In</button>
+            <p id="studentMsg" class="muted" style="margin-top:10px; font-size:12px;"></p>
+            <p class="mobile-toggle">New here? <a href="#" id="mobileSignUpLink">Sign Up</a></p>
+          </div>
+        </div>
+
+        <!-- Overlay -->
+        <div class="overlay-container">
+          <div class="overlay">
+            <div class="overlay-panel overlay-left">
+              <h1>Welcome Back!</h1>
+              <p>To keep connected with us please login with your personal info</p>
+              <button class="btn outline ghost" id="signInGhost">Sign In</button>
+            </div>
+            <div class="overlay-panel overlay-right">
+              <h1>Hello, Friend!</h1>
+              <p>Enter your personal details and start your journey with us</p>
+              <button class="btn outline ghost" id="signUpGhost">Sign Up</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="card login-container" id="forgotPasswordCard" style="display:none">
+        <!-- This will be moved to its own section below, but for now keeping structure simple -->
+      </div>
+
+      <!-- logout card shown when a student is logged in -->
+      <div class="card login-container" id="studentLogoutCard" style="display:none">
+        <h2>Logged in as <span id="currentStudentEmail"></span></h2>
+        <button class="btn outline" id="studentLogoutBtn">Logout</button>
+      </div>
+    </section>
+
+    <section id="eventRegistration" class="view" style="display:none">
+      <div class="card login-container" style="max-width:520px;">
+        <h2>Register for <span id="regEventTitle">Event</span></h2>
+        <input id="r-name" placeholder="Full Name" required />
+        <input id="r-regno" placeholder="Register Number" required />
+        <input id="r-college" placeholder="College Name" required />
+        <select id="r-sem" required>
+          <option value="">Select Semester</option>
+          <option value="1">1st Semester</option>
+          <option value="2">2nd Semester</option>
+          <option value="3">3rd Semester</option>
+          <option value="4">4th Semester</option>
+          <option value="5">5th Semester</option>
+          <option value="6">6th Semester</option>
+        </select>
+
+        <!-- ═══ Project Details Section ═══ -->
+        <div class="project-details-section">
+          <div class="project-section-header">
+            <span class="project-section-icon">📋</span>
+            <span class="project-section-title">Project Details</span>
+          </div>
+
+          <!-- Course Name -->
+          <select id="r-course" required>
+            <option value="">Select Course</option>
+            <optgroup label="Engineering">
+              <option value="CS - Computer Science">CS - Computer Science</option>
+              <option value="ME - Mechanical Engineering">ME - Mechanical Engineering</option>
+              <option value="MM - Mining / Metallurgy">MM - Mining / Metallurgy</option>
+              <option value="EEE - Electrical & Electronics">EEE - Electrical & Electronics</option>
+              <option value="ECE - Electronics & Communication">ECE - Electronics & Communication</option>
+              <option value="Civil Engineering">Civil Engineering</option>
+            </optgroup>
+            <optgroup label="Diploma">
+              <option value="Diploma - CS">Diploma - CS</option>
+              <option value="Diploma - ME">Diploma - ME</option>
+              <option value="Diploma - MM">Diploma - MM</option>
+              <option value="Diploma - EEE">Diploma - EEE</option>
+              <option value="Diploma - ECE">Diploma - ECE</option>
+              <option value="Diploma - Civil">Diploma - Civil</option>
+            </optgroup>
+            <optgroup label="Degree Courses">
+              <option value="B.Tech">B.Tech</option>
+              <option value="M.Tech">M.Tech</option>
+              <option value="BCA">BCA</option>
+              <option value="MCA">MCA</option>
+              <option value="BBA">BBA</option>
+              <option value="MBA">MBA</option>
+              <option value="B.Sc">B.Sc</option>
+              <option value="M.Sc">M.Sc</option>
+              <option value="B.Com">B.Com</option>
+              <option value="M.Com">M.Com</option>
+            </optgroup>
+            <optgroup label="Other Courses">
+              <option value="Nursing">Nursing</option>
+              <option value="Pharmacy">Pharmacy</option>
+              <option value="Arts">Arts</option>
+              <option value="Law">Law</option>
+              <option value="others">Others</option>
+            </optgroup>
+          </select>
+          <input id="r-course-other" placeholder="Enter your course name" style="display:none;" />
+
+          <!-- Project Name -->
+          <input id="r-project-name" placeholder="Project Name / Title" required />
+
+          <!-- Individual / Group Toggle -->
+          <div class="project-type-toggle">
+            <span class="project-type-label">Project Type:</span>
+            <div class="radio-group">
+              <label class="radio-pill">
+                <input type="radio" name="projectType" value="individual" id="r-type-individual" checked />
+                <span class="radio-pill-label">👤 Individual</span>
+              </label>
+              <label class="radio-pill">
+                <input type="radio" name="projectType" value="group" id="r-type-group" />
+                <span class="radio-pill-label">👥 Group</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Group Members (shown only when Group is selected) -->
+          <div id="groupMembersSection" class="group-members-section" style="display:none;">
+            <div class="group-members-header">
+              <span>👥 Group Members</span>
+              <button type="button" class="btn outline btn-sm" id="addMemberBtn" title="Add another member">+ Add
+                Member</button>
+            </div>
+            <div id="groupMembersList">
+              <div class="group-member-row">
+                <input placeholder="Member 2 — Full Name" class="member-name" />
+                <input placeholder="Register Number" class="member-regno" />
+              </div>
+            </div>
+            <p class="muted" style="font-size:11px; margin-top:6px;">ℹ️ You (above) are Member 1. Add other group
+              members here.</p>
+          </div>
+        </div>
+        <!-- ═══ End Project Details ═══ -->
+
+        <div style="margin-top:10px; display:flex; gap:10px;">
+          <button class="btn primary" id="confirmRegBtn">Confirm Registration</button>
+          <button class="btn outline" onclick="showView('home')">Cancel</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="forgotPassword" class="view" style="display:none">
+      <div class="card login-container">
+        <h2>Reset Password</h2>
+        <input id="fp-email" type="email" placeholder="Enter your registered email" />
+
+        <div id="fp-otp-section" style="display:none; margin-top:10px;">
+          <input id="fp-otp" type="text" placeholder="Enter OTP" />
+          <input id="fp-newpass" type="password" placeholder="New Password" style="margin-top:8px;" />
+          <p class="muted" style="font-size:11px; margin-top:5px; text-align:left;">Requires 8+ chars, 1 uppercase, 1
+            number, & 1 special char.</p>
+          <div style="margin-top:10px"><button class="btn primary" id="resetPassBtn">Reset Password</button></div>
+        </div>
+
+        <div style="margin-top:10px" id="fp-bg-btn">
+          <button class="btn primary" id="sendResetOtpBtn">Send OTP</button>
+        </div>
+
+        <div style="margin-top:10px"><button class="btn outline" onclick="showView('student')">Back to Login</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="admin" class="view" style="display:none">
+      <div class="card login-container" id="adminLoginCard">
+        <h2>Admin Login</h2>
+        <input id="a-email" type="text" placeholder="Username or Email" />
+        <input id="a-pass" type="password" placeholder="Password" />
+        <div style="margin-top:10px"><button class="btn primary" id="adminLoginBtn">Login</button></div>
+        <p class="muted">Default admin: <strong>Email</strong> / <strong>Password@123</strong></p>
+      </div>
+
+      <div class="card" id="adminPanel" style="display:none">
+        <div
+          style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom: 15px;">
+          <h2>Admin Panel</h2>
+          <div style="display:flex; gap:10px;">
+            <button class="btn primary btn-sm" onclick="toggleAdminTab('events')">Manage Events</button>
+            <button class="btn outline btn-sm" onclick="toggleAdminTab('analytics')">View Analytics</button>
+            <button class="btn outline btn-sm" onclick="toggleAdminTab('feedback')">Feedbacks</button>
+          </div>
+        </div>
+
+        <div id="adminTabEvents">
+          <input id="e-title" placeholder="Event Name / Title" />
+          <select id="e-category">
+            <option value="">Event Category (e.g. Technical)</option>
+            <option value="Technical">Technical</option>
+            <option value="Cultural">Cultural</option>
+            <option value="Sports">Sports</option>
+            <option value="Workshop">Workshop</option>
+          </select>
+          <input id="e-date" type="date" />
+          <input id="e-venue" placeholder="Venue" />
+          <input id="e-image-url" placeholder="Event Image URL (optional)" />
+          <input id="e-image-file" type="file" accept="image/*" />
+          <textarea id="e-desc" placeholder="Description"></textarea>
+
+          <!-- Max Registrations Toggle -->
+          <div class="max-reg-row">
+            <div class="max-reg-toggle-wrap">
+              <span class="college-logo-label">🎟️ Maximum Registrations</span>
+              <label class="toggle-switch" title="Enable seat limit">
+                <input type="checkbox" id="e-max-reg-toggle" />
+                <span class="toggle-slider">
+                  <span class="toggle-label-on">ON</span>
+                  <span class="toggle-label-off">OFF</span>
+                </span>
+              </label>
+            </div>
+            <div id="max-reg-input-wrap" style="display:none; margin-top:8px;">
+              <input id="e-max-reg" type="number" min="1" placeholder="e.g. 10  (seats available)" />
+            </div>
+          </div>
+
+
+
+          <!-- College Info -->
+          <div class="college-fields-group">
+            <label class="college-field-label">🏫 College Details</label>
+            <div class="college-name-wrapper">
+              <input id="e-college-name" placeholder="College Name" value="SCHOOL OF MINES" />
+              <button type="button" class="btn outline btn-sm" id="resetCollegeNameBtn" title="Reset to default">↺
+                Default</button>
+            </div>
+            <div class="college-logo-row">
+              <label class="college-logo-label" for="e-college-logo">College Logo (optional):</label>
+              <input id="e-college-logo" type="file" accept="image/*" class="college-logo-input" />
+              <div id="collegeLogoPreview" class="college-logo-preview" style="display:none;">
+                <img id="collegeLogoPreviewImg" src="" alt="Logo Preview" />
+                <button type="button" class="btn outline btn-sm" id="clearCollegeLogoBtn">✕ Remove</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:10px"><button class="btn primary" id="addEventBtn">Add Event</button></div>
+        </div>
+
+        <div id="adminTabAnalytics" style="display:none;">
+          <h3>Dashboard Analytics</h3>
+          <p class="muted" style="margin-bottom:20px;">Overview of registrations and platform usage.</p>
+          <div style="background:var(--card-bg); padding:15px; border-radius:12px; margin-bottom:20px;">
+            <canvas id="registrationsChart"></canvas>
+          </div>
+        </div>
+
+        <div id="adminTabFeedback" style="display:none;">
+          <h3>User Feedback</h3>
+          <div id="adminFeedbackList" style="margin-top: 15px; display:flex; flex-direction:column; gap:10px;">
+            <p class="muted">Loading feedback...</p>
+          </div>
+        </div>
+
+        <div style="margin-top:12px; border-top: 1px solid var(--card-border); padding-top: 15px;"><button
+            class="btn outline" id="adminLogoutBtn">Logout</button></div>
+      </div>
+    </section>
+
+    <section id="adminRegistrations" class="view" style="display:none">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h2 id="ar-title">Registrations</h2>
+          <div>
+            <button class="btn primary" onclick="exportRegistrations()">Export to Excel</button>
+            <button class="btn outline" onclick="showView('admin')">Back</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto; margin-top:15px;">
+          <table style="width:100%; border-collapse:collapse; text-align:left;">
+            <thead>
+              <tr style="background:#f1f5f9; border-bottom:2px solid #e2e8f0;">
+                <th style="padding:10px;">#</th>
+                <th style="padding:10px;">Name</th>
+                <th style="padding:10px;">Register No</th>
+                <th style="padding:10px;">Semester</th>
+                <th style="padding:10px;">Email</th>
+                <th style="padding:10px;">College</th>
+                <th style="padding:10px;">Course</th>
+                <th style="padding:10px;">Project</th>
+                <th style="padding:10px;">Type</th>
+                <th style="padding:10px;">Group Members</th>
+              </tr>
+            </thead>
+            <tbody id="ar-tbody">
+              <!-- rows -->
+            </tbody>
+          </table>
+          <p id="ar-empty" class="muted" style="display:none; text-align:center; padding:20px;">No registrations yet.
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="app-footer">Designed & Developed<br> by MK Tech</div>
+
+  <script src="script.js"></script>
+
+</body>
+
+</html>

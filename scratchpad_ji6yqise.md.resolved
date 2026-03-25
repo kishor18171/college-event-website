@@ -1,0 +1,9 @@
+# Task Checklist
+- [ ] Open Firebase Console URL: `https://console.firebase.google.com/project/collegeevents-56431/authentication/providers`
+- [ ] Verify page load and handle any login requests (report if needed)
+- [ ] Capture screenshot of sign-in providers
+- [ ] Identify listed providers and their status (especially Google)
+- [ ] Report findings to the user
+
+# Observations
+- Project ID: collegeevents-56431
