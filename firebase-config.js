@@ -1,7 +1,3 @@
-// Import the functions you need from the SDKs you need
-// (Compat libraries are already loaded in HTML)
-
-// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyAUct1BRu4sHeVBngZORP7RKJLlhzlZCpo",
   authDomain: "college-event-website-78bc5.firebaseapp.com",
@@ -12,7 +8,6 @@ const firebaseConfig = {
   measurementId: "G-TJ4SFB7LL5"
 };
 
-// Initialize Firebase using the compat API so existing code doesn't break
 const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
